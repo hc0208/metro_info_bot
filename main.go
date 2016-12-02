@@ -1,11 +1,12 @@
 package main
 
 import (
-    "log"
     "os"
     "fmt"
+    "log"
     "time"
     "regexp"
+    "strings"
     "net/http"
     "io/ioutil"
     "encoding/json"
@@ -80,8 +81,9 @@ func fetchTrainInfo(message string) string{
             info += fmt.Sprintf("%s: %s\n", railway, text)
         }
     } else {
-        info = "「運行情報」と入力すると東京メトロの運行情報を表示します"
+        info = "「運行情報」と入力すると東京メトロの運行情報を表示します\n"
     }
+    info = strings.TrimRight(info, "\n")
     return info
 }
 
