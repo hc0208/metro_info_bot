@@ -3,11 +3,12 @@ package main
 import (
     "log"
     "os"
-    "encoding/json"
-    "io/ioutil"
-    "net/http"
+    "fmt"
     "time"
     "regexp"
+    "net/http"
+    "io/ioutil"
+    "encoding/json"
     "github.com/gin-gonic/gin"
     "github.com/line/line-bot-sdk-go/linebot"
 )
@@ -27,39 +28,61 @@ type TrainInfomation struct {
 
 type TrainInformations []TrainInfomation
 
-func FetchTrainInfo(message string) string{
-    url := make([]byte, 0, 10)
-    url = append(url, "https://api.tokyometroapp.jp/api/v2/datapoints?rdf:type=odpt:TrainInformation&acl:consumerKey="...)
-    url = append(url, os.Getenv("CONSUMER_KEY")...)
-
-    res, err := http.Get(string(url))
-    if err != nil {
-        log.Fatal(err)
+func fetchTrainName(railway string) string {
+    name := map[string]string{
+      "Ginza":      "銀座線",
+      "Marunouchi": "丸の内線",
+      "Chiyoda":    "千代田線",
+      "Hibiya":     "日比谷線",
+      "Namboku":    "南北線",
+      "Yurakucho":  "有楽町線",
+      "Fukutoshin": "副都心線",
+      "Hanzomon":   "半蔵門線",
+      "Tozai":      "東西線",
     }
+    return name[railway]
+}
 
-    defer res.Body.Close()
+func fetchTrainInfo(message string) string{
+    info := "運行情報:\n"
 
-    body, err := ioutil.ReadAll(res.Body)
-    if err != nil {
-        log.Fatal(err)
-    }
+    if message == "運行情報" {
+        url := make([]byte, 0, 10)
+        url = append(url, "https://api.tokyometroapp.jp/api/v2/datapoints?rdf:type=odpt:TrainInformation&acl:consumerKey="...)
+        url = append(url, os.Getenv("CONSUMER_KEY")...)
 
-    var trains TrainInformations
-    err = json.Unmarshal(body, &trains)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, train := range trains {
-        rep := regexp.MustCompile(`[A-Za-z]*odpt.Railway:TokyoMetro.`)
-        text := rep.ReplaceAllString(train.Railway, "")
-        text += train.TrainInformationText
-        if len(train.TrainInformationStatus) > 0 {
-            text += train.TrainInformationStatus
+        res, err := http.Get(string(url))
+        if err != nil {
+            log.Fatal(err)
         }
-        message += text
+
+        defer res.Body.Close()
+
+        body, err := ioutil.ReadAll(res.Body)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        var trains TrainInformations
+        err = json.Unmarshal(body, &trains)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        for _, train := range trains {
+            rep  := regexp.MustCompile(`[A-Za-z]*odpt.Railway:TokyoMetro.`)
+            railway := rep.ReplaceAllString(train.Railway, "")
+            railway  = fetchTrainName(railway)
+            text := train.TrainInformationText
+            if len(train.TrainInformationStatus) > 0 {
+                text = fmt.Sprintf("%s (%s)", train.TrainInformationStatus, train.TrainInformationText)
+            }
+            info += fmt.Sprintf("%s: %s\n", railway, text)
+        }
+    } else {
+        info = "「運行情報」と入力すると東京メトロの運行情報を表示します"
     }
-    return message
+    return info
 }
 
 func main() {
@@ -92,7 +115,7 @@ func main() {
             if event.Type == linebot.EventTypeMessage {
                 switch message := event.Message.(type) {
                 case *linebot.TextMessage:
-                    text := FetchTrainInfo(message.Text)
+                    text := fetchTrainInfo(message.Text)
                     if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(text)).Do(); err != nil {
                         log.Print(err)
                     }
