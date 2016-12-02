@@ -9,7 +9,6 @@ import (
     "time"
     "regexp"
     "github.com/gin-gonic/gin"
-    "github.com/PuerkitoBio/goquery"
     "github.com/line/line-bot-sdk-go/linebot"
 )
 
@@ -54,12 +53,12 @@ func FetchTrainInfo(message string) string{
     for _, train := range trains {
         rep := regexp.MustCompile(`[A-Za-z]*odpt.Railway:TokyoMetro.`)
         text := make([]byte, 0, 10)
-        text = rep.ReplaceAllString(train.Railway, "")
+        text = rep.ReplaceAllString(train.Railway, ""...)
         text = append(text, train.TrainInformationText...)
         if len(train.TrainInformationStatus) > 0 {
             text = append(text, train.TrainInformationStatus...)
         }
-        message += srting(text)
+        message += string(text)
     }
     return message
 }
@@ -94,7 +93,7 @@ func main() {
             if event.Type == linebot.EventTypeMessage {
                 switch message := event.Message.(type) {
                 case *linebot.TextMessage:
-                    text := FetchTrainInfo(message)
+                    text := FetchTrainInfo(message.Text)
                     if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(text)).Do(); err != nil {
                         log.Print(err)
                     }
