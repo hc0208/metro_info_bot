@@ -52,13 +52,12 @@ func FetchTrainInfo(message string) string{
 
     for _, train := range trains {
         rep := regexp.MustCompile(`[A-Za-z]*odpt.Railway:TokyoMetro.`)
-        text := make([]byte, 0, 10)
-        text = rep.ReplaceAllString(train.Railway, ""...)
-        text = append(text, train.TrainInformationText...)
+        text := rep.ReplaceAllString(train.Railway, "")
+        text += train.TrainInformationText
         if len(train.TrainInformationStatus) > 0 {
-            text = append(text, train.TrainInformationStatus...)
+            text += train.TrainInformationStatus
         }
-        message += string(text)
+        message += text
     }
     return message
 }
